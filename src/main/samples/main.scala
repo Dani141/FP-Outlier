@@ -10,7 +10,7 @@ object main {
     val spark=SparkSession.builder().master("local[*]").appName("TEST").getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
     import spark.implicits._
-
+    //
     //Carega de datos original
     var data= spark.read.option("header","true").option("inferSchema","true").csv("data/dataset/mammography_id.csv")
       .drop("ID")
