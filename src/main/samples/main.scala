@@ -2,6 +2,7 @@ package main.samples
 
 import com.citi.ml.FP_Outlier
 import com.citi.transformations._
+import org.apache.hadoop.fs.FileSystem
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions.{concat_ws, lit, monotonically_increasing_id}
 
@@ -9,6 +10,8 @@ object main {
   def main(args: Array[String]): Unit = {
     val spark=SparkSession.builder().master("local[*]").appName("TEST").getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
+    val fileLocalSystem=FileSystem.get(spark.sparkContext.hadoopConfiguration)
+
     import spark.implicits._
 
     //Carega de datos original
@@ -61,4 +64,8 @@ object main {
   }
   //Procesando arrays para guardarlos en csv
   def stringify(c: Column) = functions.concat(lit("["), concat_ws(",", c), lit("]"))
+  /*def deleteTemporaryBasis(fs: FileSystem): Unit ={
+    if(fs.exists("data/temporaryBasis") && fs.isFile("data/temporaryBasis"))
+      fs.delete("data/temporaryBasis",true)
+  }*/
 }
