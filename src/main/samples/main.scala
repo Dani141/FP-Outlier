@@ -2,7 +2,7 @@ package main.samples
 
 import com.citi.ml.FP_Outlier
 import com.citi.transformations._
-import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions.{concat_ws, lit, monotonically_increasing_id}
 
@@ -53,9 +53,10 @@ object main {
       .train(bin)
 
     //Ejecución del algoritmo
-    var result= algLFPOF.transform(bin,spark)
+    val result= algLFPOF.transform(bin,spark)
     result.show(160,false)
     //Escribiendo resultados
+    deleteTemporaryBasis(fileLocalSystem)
     result.withColumn("features", stringify(result.col("features")))
       .write
       .mode(SaveMode.Overwrite)
@@ -64,8 +65,10 @@ object main {
   }
   //Procesando arrays para guardarlos en csv
   def stringify(c: Column) = functions.concat(lit("["), concat_ws(",", c), lit("]"))
-  /*def deleteTemporaryBasis(fs: FileSystem): Unit ={
-    if(fs.exists("data/temporaryBasis") && fs.isFile("data/temporaryBasis"))
-      fs.delete("data/temporaryBasis",true)
-  }*/
+
+  def deleteTemporaryBasis(fs: FileSystem): Unit ={
+    val filePath=new Path("data/temporaryBasis")
+    if(fs.exists(filePath) && fs.isFile(filePath))
+      fs.delete(filePath,true)
+  }
 }
