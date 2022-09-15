@@ -44,7 +44,7 @@ object main {
       }
     }
 
-    //Discretizacón de los intervalos en 6
+    //Generaciòn de patrones frecuentes
     val algLFPOF= new FP_Outlier()
       .setMinConfidence(0.6)
       .setMinSupport(0.1)
@@ -55,6 +55,7 @@ object main {
     //Ejecución del algoritmo
     val result= algLFPOF.transform(bin,spark)
     result.show(160,false)
+
     //Escribiendo resultados
     deleteTemporaryBasis(fileLocalSystem)
     result.withColumn("features", stringify(result.col("features")))

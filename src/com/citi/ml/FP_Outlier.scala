@@ -41,15 +41,18 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
     totalElement = trainData.count()
     val dataFeatured = trainData.select(notAnalitycCols :+ array(arrCols: _*).as("features"): _*)
     val fpgrowth = new FPGrowth().setItemsCol("features").setMinSupport(minSupport).setMinConfidence(minConfidence)
+
+    //Creaciòn del modelo
     val cuncurrenteModel = fpgrowth.fit(dataFeatured)
     model=cuncurrenteModel
+    
     // Display frequent itemsets
     model.freqItemsets.show(10, false)
     patterns = model.freqItemsets.collect().map(x => (x.getAs[Seq[String]](0).toArray, x.getLong(1)))
     this
   }
 
-  //Funcion para evaluar las trnsacciones basado en el modelo obtenido utlizando LFPOF, FPOF, WCFPOF
+  //Funcion para evaluar las trnsacciones basado en el modelo obtenido utlizando LFPOF
   def transform(data: Dataset[Row], spark: SparkSession): Dataset[Row] = {
     import spark.implicits._
     var arrCols = Array.fill(0)(col(""))
@@ -149,7 +152,8 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
     pattern._1.foreach(x => if (item.contains(x)) counter += 1)
     counter
   }
-  private def anomalyCoefficient(dataset: Dataset[Row]): Double ={
+
+   private def anomalyCoefficient(dataset: Dataset[Row]): Double ={
     var coefficient=1.0
 
     val valuesList=dataset.select("LFPOF_METRIC").collect().toList
@@ -160,6 +164,7 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
     }
      coefficient
   }
+
    private def itsAbnormal(lfpofValue: Double,lfpofCoefficent: Double ): String={
      var result="normal"
      if(lfpofValue==lfpofCoefficent)
