@@ -17,18 +17,6 @@ object main {
     //Carega de datos original
     var data= spark.read.option("header","true").option("inferSchema","true").csv("data/dataset/mammography_id.csv")
       .drop("ID")
-    try {
-      //Carega de datos temporal
-      var dataTemporary = spark.read.option("header", "true").option("inferSchema", "true").csv("data/temporaryBasis")
-        .drop("ID", "features", "LFPOF_METRIC", "FPOF_METRIC", "WCPOF_METRIC")
-      for (d <- dataTemporary.columns)
-        if (d.contains("_bin"))
-          dataTemporary = dataTemporary.drop(d)
-      //Unir los dos datos
-      data = dataTemporary.union(data).withColumn("ID", monotonically_increasing_id())
-    }catch {
-      case e: Exception =>{}
-    }
 
     var bin = data
     for (d <- data.columns){
@@ -41,6 +29,18 @@ object main {
           .fit(bin)
           .transform(bin)
         bin = bin1
+      }
+    }
+
+    try {
+      //Carega de datos temporal
+      var dataTemporary = spark.read.option("header", "true").option("inferSchema", "true").csv("data/temporaryBasis")
+        .drop("ID", "features", "LFPOF_METRIC", "FPOF_METRIC", "WCPOF_METRIC")
+      //Unir los dos datos
+      data = dataTemporary.union(data).withColumn("ID", monotonically_increasing_id())
+    }catch {
+      case e: Exception =>{
+        println("Empty temporary database")
       }
     }
 
