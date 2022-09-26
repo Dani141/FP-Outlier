@@ -47,7 +47,13 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
     model=cuncurrenteModel
     
     // Display frequent itemsets
-    model.freqItemsets.show(10, false)
+    val freqPatterns=model.freqItemsets
+    freqPatterns.show(10, false)
+    println( "Number of patterns found "+ freqPatterns.count())
+
+    /*val freqPatternSize = freqPatterns.agg(sum("freq")).collectAsList().get(0).get(0).asInstanceOf[Long]
+    println("Mean size of patterns "+ freqPatternSize / totalElement)*/
+
     patterns = model.freqItemsets.collect().map(x => (x.getAs[Seq[String]](0).toArray, x.getLong(1)))
     this
   }
@@ -67,9 +73,9 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
     dataFeatured = dataFeatured.map(x => Row(x.toSeq :+ (lfpof(x.getAs[Seq[String]](posFeatures))): _*))(RowEncoder.apply(tmpSch))
 
     //Add column of anomaly
-    var lfpofCoefficent=anomalyCoefficient(dataFeatured)
+    val lfpofCoefficent=anomalyCoefficient(dataFeatured)
     tmpSch = dataFeatured.schema
-      .add(new StructField("",StringType ))
+      .add(new StructField("Anomaly",StringType ))
     dataFeatured = dataFeatured.map(x => Row(x.toSeq :+ ( itsAbnormal(lfpof(x.getAs[Seq[String]](posFeatures)),lfpofCoefficent)) : _*))(RowEncoder.apply(tmpSch))
 
     dataFeatured

@@ -2,7 +2,6 @@ package main.samples
 
 import com.citi.ml.FP_Outlier
 import com.citi.transformations._
-import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions.{concat_ws, lit, monotonically_increasing_id}
 
@@ -10,12 +9,11 @@ object main {
   def main(args: Array[String]): Unit = {
     val spark=SparkSession.builder().master("local[*]").appName("TEST").getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
-    val fileLocalSystem=FileSystem.get(spark.sparkContext.hadoopConfiguration)
 
     import spark.implicits._
 
     //Carega de datos original
-    var data= spark.read.option("header","true").option("inferSchema","true").csv("data/dataset/mammography_id.csv")
+    val data= spark.read.option("header","true").option("inferSchema","true").csv("data/dataset/mammography_id.csv")
       .drop("ID")
 
     var bin = data
@@ -34,10 +32,11 @@ object main {
 
     try {
       //Carega de datos temporal
-      var dataTemporary = spark.read.option("header", "true").option("inferSchema", "true").csv("data/temporaryBasis")
-        .drop("ID", "features", "LFPOF_METRIC", "FPOF_METRIC", "WCPOF_METRIC")
+      val dataTemporary = spark.read.option("header", "true").option("inferSchema", "true").csv("data/temporaryBasis")
+        .drop("ID", "features", "LFPOF_METRIC", "Anomaly")
       //Unir los dos datos
-      data = dataTemporary.union(data).withColumn("ID", monotonically_increasing_id())
+      dataTemporary.cache()
+      bin = dataTemporary.union(bin).withColumn("ID", monotonically_increasing_id())
     }catch {
       case e: Exception =>{
         println("Empty temporary database")
@@ -57,8 +56,7 @@ object main {
     result.show(160,false)
 
     //Escribiendo resultados
-    deleteTemporaryBasis(fileLocalSystem)
-    result.withColumn("features", stringify(result.col("features")))
+      result.withColumn("features", stringify(result.col("features")))
       .write
       .mode(SaveMode.Overwrite)
       .option("header","true")
@@ -67,9 +65,4 @@ object main {
   //Procesando arrays para guardarlos en csv
   def stringify(c: Column) = functions.concat(lit("["), concat_ws(",", c), lit("]"))
 
-  def deleteTemporaryBasis(fs: FileSystem): Unit ={
-    val filePath=new Path("data/temporaryBasis")
-    if(fs.exists(filePath) && fs.isFile(filePath))
-      fs.delete(filePath,true)
-  }
 }
