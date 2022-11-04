@@ -1,5 +1,6 @@
 package main.samples
 
+import Test.TestMetrics
 import com.citi.ml.FP_Outlier
 import com.citi.transformations._
 import org.apache.spark.sql._
@@ -7,7 +8,7 @@ import org.apache.spark.sql.functions.{concat_ws, lit, monotonically_increasing_
 
 object main {
   def main(args: Array[String]): Unit = {
-    val spark=SparkSession.builder().master("local[*]").appName("TEST").getOrCreate()
+    val spark=SparkSession.builder().master("local").appName("TEST").getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
 
     import spark.implicits._
@@ -39,7 +40,6 @@ object main {
       bin = dataTemporary.union(bin).withColumn("ID", monotonically_increasing_id())
     }catch {
       case e: Exception =>{
-        println("Empty temporary database")
       }
     }
 
@@ -61,6 +61,10 @@ object main {
       .mode(SaveMode.Overwrite)
       .option("header","true")
       .csv("data/temporaryBasis")
+
+    //Test
+    var test = new TestMetrics()
+      .confusionMatrix(result,spark)
   }
   //Procesando arrays para guardarlos en csv
   def stringify(c: Column) = functions.concat(lit("["), concat_ws(",", c), lit("]"))

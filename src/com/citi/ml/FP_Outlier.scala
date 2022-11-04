@@ -49,10 +49,9 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
     // Display frequent itemsets
     val freqPatterns=model.freqItemsets
     freqPatterns.show(10, false)
-    println( "Number of patterns found "+ freqPatterns.count())
 
-    /*val freqPatternSize = freqPatterns.agg(sum("freq")).collectAsList().get(0).get(0).asInstanceOf[Long]
-    println("Mean size of patterns "+ freqPatternSize / totalElement)*/
+    val freqPatternSize = freqPatterns.agg(sum("freq")).collectAsList().get(0).get(0).asInstanceOf[Long]
+    println("Mean size of patterns "+ freqPatternSize / totalElement)
 
     patterns = model.freqItemsets.collect().map(x => (x.getAs[Seq[String]](0).toArray, x.getLong(1)))
     this
