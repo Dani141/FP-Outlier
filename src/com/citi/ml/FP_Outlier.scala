@@ -167,13 +167,16 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
       if (coefficient>x)
         coefficient=x
     }
+      if(coefficient<0.4)
+       coefficient=coefficient+0.2
      coefficient
   }
 
    private def itsAbnormal(lfpofValue: Double,lfpofCoefficent: Double ): String={
      var result="normal"
-     if(lfpofValue==lfpofCoefficent)
+     if(lfpofValue<=lfpofCoefficent) {
        result="abnormal"
+     }
      result
    }
 }

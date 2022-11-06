@@ -1,21 +1,11 @@
-package main.samples
+package com.citi.ml
 
-import Test.TestMetrics
-import com.citi.ml.FP_Outlier
-import com.citi.transformations._
-import org.apache.spark.sql._
+import com.citi.transformations.EqualRangeBinner
 import org.apache.spark.sql.functions.{concat_ws, lit, monotonically_increasing_id}
+import org.apache.spark.sql._
 
-object main {
-  def main(args: Array[String]): Unit = {
-    val spark=SparkSession.builder().master("local").appName("TEST").getOrCreate()
-    spark.sparkContext.setLogLevel("ERROR")
-
-    import spark.implicits._
-
-    //Carega de datos original
-    val data= spark.read.option("header","true").option("inferSchema","true").csv("data/dataset/shuttle_id.csv")
-      .drop("ID")
+class Principal {
+  def principal(spark: SparkSession, data: DataFrame): Unit ={
 
     var bin = data
     for (d <- data.columns){
@@ -48,7 +38,7 @@ object main {
       .setMinConfidence(0.6)
       .setMinSupport(0.1)
       .setColumns(bin.columns
-      .filter(x=>x.contains("_bin")))
+        .filter(x=>x.contains("_bin")))
       .train(bin)
 
     //Ejecución del algoritmo
@@ -56,17 +46,13 @@ object main {
     result.show(160,false)
 
     //Escribiendo resultados
-      result.withColumn("features", stringify(result.col("features")))
+    result.withColumn("features", stringify(result.col("features")))
       .write
       .mode(SaveMode.Overwrite)
       .option("header","true")
       .csv("data/temporaryBasis")
 
-    //Test
-    var test = new TestMetrics()
-      .confusionMatrix(result,spark)
-  }
+}
   //Procesando arrays para guardarlos en csv
   def stringify(c: Column) = functions.concat(lit("["), concat_ws(",", c), lit("]"))
-
 }
