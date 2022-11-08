@@ -14,7 +14,7 @@ object main {
     import spark.implicits._
 
     //Carega de datos original
-    val data= spark.read.option("header","true").option("inferSchema","true").csv("data/dataset/shuttle_id.csv")
+    val data= spark.read.option("header","true").option("inferSchema","true").csv("data/dataset/mammography_id.csv")
       .drop("ID")
 
     var bin = data

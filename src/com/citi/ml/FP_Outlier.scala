@@ -127,7 +127,7 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
       true
   }
 
-  private def countMatchingPattern = udf((colitem: Seq[String]) => {
+ /*private def countMatchingPattern = udf((colitem: Seq[String]) => {
     var cant = 0
     patterns.foreach(x => if (itemMatchWithPattern(colitem, x) > 0) cant += 1)
     cant
@@ -148,7 +148,7 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
         cantTotalItem += x._1.length
     }
     cantTotalItem
-  })
+  })*/
 
   private case class matching(CantItemSetMatch: Int, CantTotalItemSet: Int)
 

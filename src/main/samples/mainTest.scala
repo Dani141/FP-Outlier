@@ -14,10 +14,10 @@ object mainTest {
     spark.sparkContext.setLogLevel("ERROR")
 
     //Carega de datos original
-    val data = spark.read.option("header", "true").option("inferSchema", "true").csv("data/dataset/smtp.csv")
+    val data = spark.read.option("header", "true").option("inferSchema", "true").csv("data/dataset/mammography_id.csv")
       .drop("ID")
 
-    val splitData = data.randomSplit(Array(0.7, 0.1, 0.1, 0.1), 2)
+    val splitData = data.randomSplit(Array(0.7, 0.1, 0.1, 0.1), 10)
 
     val dataResult = splitData.map { partition =>
 
@@ -40,8 +40,9 @@ object mainTest {
       val accuracy = BigDecimal(metrics.accuracy(tp, tn, fp, fn) * 100).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
       val precision = BigDecimal(metrics.precision(tp, fp) * 100).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
       val recall = BigDecimal(metrics.recall(tp, fn) * 100).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
-
-      (Duration(end_time - ini_time, NANOSECONDS).toMillis.toDouble / 1000, tp, tn, fp, fn, accuracy, precision, recall)
+      val especificity = BigDecimal(metrics.especificity(tn,fp) * 100).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
+      val f1 = BigDecimal(metrics.f1(precision, recall) * 100).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
+      (Duration(end_time - ini_time, NANOSECONDS).toMillis.toDouble / 1000, tp, tn, fp, fn, accuracy, precision, recall,especificity,f1)
     }
 
 
@@ -56,6 +57,8 @@ object mainTest {
     println("Accuracy: " + dataResult.map(_._6).mkString("", ", ", ""))
     println("Precision: " + dataResult.map(_._7).mkString("", ", ", ""))
     println("Recall: " + dataResult.map(_._8).mkString("", ", ", ""))
+    println("Especificity: " + dataResult.map(_._9).mkString("", ", ", ""))
+    println("F1: " + dataResult.map(_._10).mkString("", ", ", ""))
     println("************************************************")
     println("************************************************")
     println("************************************************")
