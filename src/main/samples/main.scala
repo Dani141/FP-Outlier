@@ -1,6 +1,5 @@
 package main.samples
 
-import Test.TestMetrics
 import com.citi.ml.FP_Outlier
 import com.citi.transformations._
 import org.apache.spark.sql._
@@ -61,10 +60,6 @@ object main {
       .mode(SaveMode.Overwrite)
       .option("header","true")
       .csv("data/temporaryBasis")
-
-    //Test
-    var test = new TestMetrics()
-      .confusionMatrix(result,spark)
   }
   //Procesando arrays para guardarlos en csv
   def stringify(c: Column) = functions.concat(lit("["), concat_ws(",", c), lit("]"))
