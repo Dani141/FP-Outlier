@@ -14,7 +14,7 @@ object mainTest {
     spark.sparkContext.setLogLevel("ERROR")
 
     //Carega de datos original
-    val data = spark.read.option("header", "true").option("inferSchema", "true").csv("data/dataset/mammography_id.csv")
+    val data = spark.read.option("header", "true").option("inferSchema", "true").csv("data/dataset/satimage_id.csv")
       .drop("ID")
 
     val splitData = data.randomSplit(Array(0.7, 0.1, 0.1, 0.1), 10)
@@ -22,6 +22,7 @@ object mainTest {
     val dataResult = splitData.map { partition =>
 
       val ini_time = System.nanoTime()
+
       //Algoritmo
       val principal = new Principal()
       principal.principal(spark, partition)
@@ -45,7 +46,6 @@ object mainTest {
       (Duration(end_time - ini_time, NANOSECONDS).toMillis.toDouble / 1000, tp, tn, fp, fn, accuracy, precision, recall,especificity,f1)
     }
 
-
     println("************************************************")
     println("************************************************")
     println("************************************************")
@@ -65,6 +65,4 @@ object mainTest {
     println("************************************************")
 
   }
-
-
 }

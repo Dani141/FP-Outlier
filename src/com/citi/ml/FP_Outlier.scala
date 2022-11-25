@@ -1,5 +1,5 @@
 package com.citi.ml
-import org.apache.spark.ml.fpm.{FPGrowth, FPGrowthModel}
+import org.apache.spark.ml.fpm.FPGrowth
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.functions._
@@ -10,8 +10,6 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
   var cols: Array[String] = Array.fill(0)("")
   var minConfidence = 0.5
   var patterns = Array.fill(0)((Array.fill(0)(""), 0L))
-  var totalElement = 0L
-  var model: FPGrowthModel = null
 
   //Funcion para especificar el soporte minimo de los patrones a minar
   def setMinSupport(supportParam: Double): this.type = {
@@ -38,22 +36,17 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
     cols.foreach(x => arrCols = arrCols :+ col(x))
     trainData.columns
       .foreach(x => notAnalitycCols = notAnalitycCols :+ col(x))
-    totalElement = trainData.count()
     val dataFeatured = trainData.select(notAnalitycCols :+ array(arrCols: _*).as("features"): _*)
     val fpgrowth = new FPGrowth().setItemsCol("features").setMinSupport(minSupport).setMinConfidence(minConfidence)
 
     //Creaciòn del modelo
     val cuncurrenteModel = fpgrowth.fit(dataFeatured)
-    model=cuncurrenteModel
     
     // Display frequent itemsets
-    val freqPatterns=model.freqItemsets
+    val freqPatterns=cuncurrenteModel.freqItemsets
     freqPatterns.show(10, false)
 
-    val freqPatternSize = freqPatterns.agg(sum("freq")).collectAsList().get(0).get(0).asInstanceOf[Long]
-    println("Mean size of patterns "+ freqPatternSize / totalElement)
-
-    patterns = model.freqItemsets.collect().map(x => (x.getAs[Seq[String]](0).toArray, x.getLong(1)))
+    patterns = cuncurrenteModel.freqItemsets.collect().map(x => (x.getAs[Seq[String]](0).toArray, x.getLong(1)))
     this
   }
 
@@ -68,19 +61,18 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
     var dataFeatured = data.select(notAnalitycCols :+ array(arrCols: _*).as("features"): _*)
     val posFeatures = dataFeatured.schema.fields.map(x => x.name).indexOf("features")
     var tmpSch = dataFeatured.schema
-      .add(new StructField("LFPOF_METRIC", DoubleType))
+      .add( StructField("LFPOF_METRIC", DoubleType) )
     dataFeatured = dataFeatured.map(x => Row(x.toSeq :+ (lfpof(x.getAs[Seq[String]](posFeatures))): _*))(RowEncoder.apply(tmpSch))
 
     //Add column of anomaly
-    val lfpofCoefficent=anomalyCoefficient(dataFeatured)
+    val lfpofMean = dataFeatured.select(avg("LFPOF_METRIC")).collect().apply(0).getDouble(0)
     tmpSch = dataFeatured.schema
-      .add(new StructField("Anomaly",StringType ))
-    dataFeatured = dataFeatured.map(x => Row(x.toSeq :+ ( itsAbnormal(lfpof(x.getAs[Seq[String]](posFeatures)),lfpofCoefficent)) : _*))(RowEncoder.apply(tmpSch))
-
+      .add( StructField("Anomaly",StringType ))
+    dataFeatured = dataFeatured.map(x => Row(x.toSeq :+ ( itsAbnormal(lfpof(x.getAs[Seq[String]](posFeatures)),lfpofMean)) : _*))(RowEncoder.apply(tmpSch))
     dataFeatured
   }
 
-  //Funcion para calcular FPOF
+  /*//Funcion para calcular FPOF
   def findCoverFPOF(features: Seq[String], patterns: Array[(Array[String], Long)]): Double = {
     var sum = 0.0
     for (ptr <- patterns) {
@@ -104,7 +96,7 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
 
   private def fpof(features: Seq[String]) = (findCoverFPOF(features, patterns))
 
-  private def wcpof(features: Seq[String]) = (findCoverWCFPOF(features, patterns))
+  private def wcpof(features: Seq[String]) = (findCoverWCFPOF(features, patterns))*/
 
   private def lfpof(features: Seq[String]) = (findMaxSizePatternLFPOF(features, patterns))
 
@@ -127,7 +119,9 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
       true
   }
 
- /*private def countMatchingPattern = udf((colitem: Seq[String]) => {
+   private def itsAbnormal(lfpofValue: Double,lfpofCoefficent: Double ): String= if(lfpofValue<lfpofCoefficent) "abnormal" else "normal"
+
+  /*private def countMatchingPattern = udf((colitem: Seq[String]) => {
     var cant = 0
     patterns.foreach(x => if (itemMatchWithPattern(colitem, x) > 0) cant += 1)
     cant
@@ -148,7 +142,7 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
         cantTotalItem += x._1.length
     }
     cantTotalItem
-  })*/
+  })
 
   private case class matching(CantItemSetMatch: Int, CantTotalItemSet: Int)
 
@@ -156,27 +150,6 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
     var counter = 0
     pattern._1.foreach(x => if (item.contains(x)) counter += 1)
     counter
-  }
+  }*/
 
-   private def anomalyCoefficient(dataset: Dataset[Row]): Double ={
-    var coefficient=1.0
-
-    val valuesList=dataset.select("LFPOF_METRIC").collect().toList
-    for (i<-valuesList){
-      val x=i.getDouble(0)
-      if (coefficient>x)
-        coefficient=x
-    }
-      if(coefficient<0.4)
-       coefficient=coefficient+0.2
-     coefficient
-  }
-
-   private def itsAbnormal(lfpofValue: Double,lfpofCoefficent: Double ): String={
-     var result="normal"
-     if(lfpofValue<=lfpofCoefficent) {
-       result="abnormal"
-     }
-     result
-   }
 }
