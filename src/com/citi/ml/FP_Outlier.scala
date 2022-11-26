@@ -65,10 +65,10 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
     dataFeatured = dataFeatured.map(x => Row(x.toSeq :+ (lfpof(x.getAs[Seq[String]](posFeatures))): _*))(RowEncoder.apply(tmpSch))
 
     //Add column of anomaly
-    val lfpofMean = dataFeatured.select(avg("LFPOF_METRIC")).collect().apply(0).getDouble(0)
-    tmpSch = dataFeatured.schema
+    val lfpofCoeficient = dataFeatured.select(avg("LFPOF_METRIC")).collect().apply(0).getDouble(0) - dataFeatured.select(stddev("LFPOF_METRIC")).collect().apply(0).getDouble(0)
+      tmpSch = dataFeatured.schema
       .add( StructField("Anomaly",StringType ))
-    dataFeatured = dataFeatured.map(x => Row(x.toSeq :+ ( itsAbnormal(lfpof(x.getAs[Seq[String]](posFeatures)),lfpofMean)) : _*))(RowEncoder.apply(tmpSch))
+    dataFeatured = dataFeatured.map(x => Row(x.toSeq :+ ( itsAbnormal(lfpof(x.getAs[Seq[String]](posFeatures)),lfpofCoeficient)) : _*))(RowEncoder.apply(tmpSch))
     dataFeatured
   }
 
