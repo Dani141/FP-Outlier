@@ -19,13 +19,21 @@ object mainTest {
 
     val splitData = data.randomSplit(Array(0.7, 0.1, 0.1, 0.1), 10)
 
+    var counter = 0
+
+    var patterns = Array.fill(0)(Array.fill(0)(""))
+
     val dataResult = splitData.map { partition =>
 
       val ini_time = System.nanoTime()
 
       //Algoritmo
       val principal = new Principal()
-      principal.principal(spark, partition)
+      principal.setPatterns(patterns)
+        .principal(spark, partition,counter)
+      patterns=principal.getPatterns()
+
+      counter=counter+1
 
       val end_time = System.nanoTime()
 

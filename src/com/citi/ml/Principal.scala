@@ -5,7 +5,17 @@ import org.apache.spark.sql._
 
 class Principal {
 
-  def principal(spark: SparkSession, data: DataFrame): Unit ={
+  var patterns: Array[Array[String]] = Array.fill(0)(Array.fill(0)(""))
+  var modeWrite = SaveMode.Append
+
+  def getPatterns()={patterns}
+
+  def setPatterns(newPatterns: Array[Array[String]]):this.type ={
+    patterns=newPatterns
+    this
+  }
+
+  def principal(spark: SparkSession, data: DataFrame,counter: Int): Unit ={
 
     var bin = data
     for (d <- data.columns){
@@ -20,35 +30,41 @@ class Principal {
         bin = bin1
       }
     }
+    var algLFPOF = new FP_Outlier()
+      .setMinConfidence(0.6)
+      .setMinSupport(0.1)
+      .setColumns(bin.columns
+        .filter(x => x.contains("_bin")))
 
-      try {
-        //Carega de datos temporal
-        val dataTemporary = spark.read.option("header", "true").option("inferSchema", "true").csv("data/temporaryBasis")
-          .drop("LFPOF_METRIC", "Anomaly")
-        //Unir los dos datos
-        dataTemporary.cache()
-        bin = dataTemporary.union(bin)
-      } catch {
-        case e: Exception => {
+      if(counter==0) {
+        try {
+          //Carega de datos temporal
+          val dataTemporary = spark.read.option("header", "true").option("inferSchema", "true").csv("data/temporaryBasis")
+            .drop("LFPOF_METRIC", "Anomaly")
+          //Unir los dos datos
+          dataTemporary.cache()
+          bin = dataTemporary.union(bin)
+        } catch {
+          case e: Exception => {
+          }
         }
+
+        //Generaciòn de patrones frecuentes
+         algLFPOF= algLFPOF.train(bin)
+        patterns=algLFPOF.patterns
+
+        modeWrite = SaveMode.Overwrite
       }
 
-      //Generaciòn de patrones frecuentes
-      val algLFPOF = new FP_Outlier()
-        .setMinConfidence(0.6)
-        .setMinSupport(0.1)
-        .setColumns(bin.columns
-          .filter(x => x.contains("_bin")))
-        .train(bin)
-
     //Ejecución del algoritmo
-    val result= algLFPOF.transform(bin,spark)
+    val result= algLFPOF.setPatterns(patterns)
+      .transform(bin,spark)
     result.show(160,false)
 
     //Escribiendo resultados
     result.write
-      .mode(SaveMode.Overwrite)
+      .mode(modeWrite)
       .option("header","true")
       .csv("data/temporaryBasis")
-}
+  }
 }

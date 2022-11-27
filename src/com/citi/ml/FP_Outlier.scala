@@ -29,6 +29,12 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
     this
   }
 
+   //Funcion para especificar patrones frecuentes
+   def setPatterns(newPatterns: Array[Array[String]]):this.type ={
+     patterns=newPatterns
+     this
+   }
+
   //Funcion para entrenar el modelos de datos y obtener los patrones k describan el set de datos
   def train(trainData: Dataset[Row]): this.type = {
     var arrCols = Array.fill(0)(col(""))
@@ -155,5 +161,4 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
     pattern._1.foreach(x => if (item.contains(x)) counter += 1)
     counter
   }*/
-
 }
