@@ -14,7 +14,7 @@ object mainTest {
     spark.sparkContext.setLogLevel("ERROR")
 
     //Carega de datos original
-    val data = spark.read.option("header", "true").option("inferSchema", "true").csv("data/dataset/mammography_id.csv")
+    val data = spark.read.option("header", "true").option("inferSchema", "true").csv("data/dataset/satimage_id.csv")
       .drop("ID")
 
     val splitData = data.randomSplit(Array(0.7, 0.1, 0.1, 0.1), 10)

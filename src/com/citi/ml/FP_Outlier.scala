@@ -9,7 +9,7 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
   var minSupport = 0.0
   var cols: Array[String] = Array.fill(0)("")
   var minConfidence = 0.5
-  var patterns = Array.fill(0)((Array.fill(0)(""), 0L))
+  var patterns: Array[Array[String]] = Array.fill(0)(Array.fill(0)(""))
 
   //Funcion para especificar el soporte minimo de los patrones a minar
   def setMinSupport(supportParam: Double): this.type = {
@@ -46,7 +46,7 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
     val freqPatterns=cuncurrenteModel.freqItemsets
     freqPatterns.show(10, false)
 
-    patterns = cuncurrenteModel.freqItemsets.collect().map(x => (x.getAs[Seq[String]](0).toArray, x.getLong(1)))
+    patterns = cuncurrenteModel.freqItemsets.collect().map(x => (x.getAs[Seq[String]](0).toArray))
     this
   }
 
@@ -60,15 +60,20 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
       .foreach(x => notAnalitycCols = notAnalitycCols :+ col(x))
     var dataFeatured = data.select(notAnalitycCols :+ array(arrCols: _*).as("features"): _*)
     val posFeatures = dataFeatured.schema.fields.map(x => x.name).indexOf("features")
+
+    //Add lfpof metric
     var tmpSch = dataFeatured.schema
-      .add( StructField("LFPOF_METRIC", DoubleType) )
-    dataFeatured = dataFeatured.map(x => Row(x.toSeq :+ (lfpof(x.getAs[Seq[String]](posFeatures))): _*))(RowEncoder.apply(tmpSch))
+      .add( StructField("LFPOF_METRIC", DoubleType))
+    dataFeatured = dataFeatured.map(x => Row(x.toSeq :+ lfpof(x.getAs[Seq[String]](posFeatures)): _*))(RowEncoder.apply(tmpSch))
+
+    dataFeatured=dataFeatured.drop("features")
+    val lfpofIndex = dataFeatured.columns.length
 
     //Add column of anomaly
     val lfpofCoeficient = dataFeatured.select(avg("LFPOF_METRIC")).collect().apply(0).getDouble(0) - dataFeatured.select(stddev("LFPOF_METRIC")).collect().apply(0).getDouble(0)
       tmpSch = dataFeatured.schema
       .add( StructField("Anomaly",StringType ))
-    dataFeatured = dataFeatured.map(x => Row(x.toSeq :+ ( itsAbnormal(lfpof(x.getAs[Seq[String]](posFeatures)),lfpofCoeficient)) : _*))(RowEncoder.apply(tmpSch))
+    dataFeatured = dataFeatured.map(x => Row(x.toSeq :+ ( itsAbnormal(x.getDouble(lfpofIndex-1),lfpofCoeficient)) : _*))(RowEncoder.apply(tmpSch))
     dataFeatured
   }
 
@@ -101,22 +106,21 @@ import org.apache.spark.sql.types.{DoubleType, StringType, StructField}
   private def lfpof(features: Seq[String]) = (findMaxSizePatternLFPOF(features, patterns))
 
   //Funcion para calcular LFPOF
-  private def findMaxSizePatternLFPOF(feature: Seq[String], patterns: Array[(Array[String], Long)]): Double = {
-    var maxSize = 0
-    for (pttrn <- patterns) {
-      if (matchWithFullPattern(feature, pttrn) && maxSize < pttrn._1.length)
-        maxSize = pttrn._1.length
-    }
-    maxSize.toDouble / feature.length.toDouble
+  private def findMaxSizePatternLFPOF(feature: Seq[String], patterns: Array[(Array[String])]): Double = {
+    var maxSize = 0.0
+    maxSize = patterns.map(x => matchWithFullPattern(feature, x)).max
+    maxSize / feature.length.toDouble
   }
 
-  private def matchWithFullPattern(item: Seq[String], pattern: (Array[String], Long)): Boolean = {
+  private def matchWithFullPattern(item: Seq[String], pattern: (Array[String])): Double = {
     var counter = 0
-    pattern._1.foreach(x => if (item.contains(x)) counter += 1)
-    if (counter != pattern._1.length)
-      false
-    else
-      true
+    var lengthPattern = 0.0
+    pattern.foreach(x => if (item.contains(x)) counter += 1)
+    if (counter != pattern.length) {
+      lengthPattern = 0.0
+    } else
+      lengthPattern = pattern.length.toDouble
+    lengthPattern
   }
 
    private def itsAbnormal(lfpofValue: Double,lfpofCoefficent: Double ): String= if(lfpofValue<lfpofCoefficent) "abnormal" else "normal"
